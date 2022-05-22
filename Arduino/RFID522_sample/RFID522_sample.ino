@@ -28,6 +28,7 @@ bool writeStatus = false;
 /*
 bool btnpinValue = digitalRead(6);
   digitalRead(BTN_PIN);
+  коменнт тест2
 */
 void ledSetColor(int state)
 {
