@@ -68,13 +68,11 @@ void setup() {
   delay(500);
 }
 
-
 void uidPrint(byte *uidBite, int uidSize){
   for (byte i = 0; i < uidSize; i++) 
   {
      Serial.print(uidBite[i] < 0x10 ? " 0" : " ");
      Serial.print(uidBite[i], HEX);
-
   }
 }
 
@@ -88,14 +86,11 @@ void openDoor(){
 
 void loop() {
 
-  
-   
   RFIDKey *key = ReadRFIDKey();  //uidPrint(mfrc522.uid.uidByte,mfrc522.uid.size)
   
   if(key!=NULL)
   {
     //ключ піднесли
-
       //перевіряємо чи є в базі
       int keyAddress = storage.foundTag(key->ByteValue,key->ByteSize);
    
@@ -127,9 +122,7 @@ void loop() {
             ledSetColor(LED_STATE_RED);  
         }
         
-        
-
-        
+ 
       }
       /*
       uidPrint(key->ByteValue,key->ByteSize);
@@ -152,10 +145,8 @@ void loop() {
       }else{
         ledSetColor(LED_STATE_OFF);  
       }
-    
-      
-   }
 
+   }
 
   if ( adminWasHere.isReady())
   {
