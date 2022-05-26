@@ -30,10 +30,7 @@ Storage storage(EE_START_ADDR);
 //зберігаємо флаг ( адмін притуляв свою карточку )
 bool prevAdmin = false;
 bool writeStatus = false;
-/*
-bool btnpinValue = digitalRead(6);
-  digitalRead(BTN_PIN);
-*/
+ 
 void ledSetColor(int state)
 {
     switch(state)
@@ -98,8 +95,8 @@ bool IsAdmin(byte *uidBite, int uidSize)
 void openDoor()
        {            // тут вставити код відкривання дверей
    
-   /*digitalWrite(DOOR_PIN, HIGH);
-   digitalWrite(BUZZER_PIN, HIGH);*/
+   //digitalWrite(DOOR_PIN, HIGH);
+   digitalWrite(BUZZER_PIN, HIGH);
   Serial.println("відкриваємо двері");
       
        } 
@@ -121,7 +118,7 @@ void loop()
         //є адреса цього ключа, можна давати доступ 
         //ключ є в базі
         ledSetColor(LED_STATE_GREEN);
-        
+        delay(2000);
         openDoor();
         
         if(!prevAdmin && IsAdmin(key->ByteValue,key->ByteSize)){
@@ -155,7 +152,7 @@ void loop()
       Serial.println(" keyAddress");
       delay(500);
       /**/
-      // кінеці ключ піднесли
+      //   ключ піднесли для зчитування
 
       if(storage.savedTagsCount()==0){
         storage.saveTag(key->ByteValue,key->ByteSize);
