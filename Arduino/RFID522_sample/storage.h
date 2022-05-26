@@ -80,7 +80,10 @@ class Storage{
           return STORE_RESULT_DELITED;                        // індикація
       }
       return STORE_RESULT_DECLINE;
-    }  
+    } 
+    int savedTagsCount(){
+      return savedTags;
+      } 
     
 
   };
