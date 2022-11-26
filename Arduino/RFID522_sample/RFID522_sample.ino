@@ -21,43 +21,87 @@
 #define EE_START_ADDR    5   // Ключ для проверки на перше включення
 
 #define ADMIN_KEY 0xD3526F0D  // Ключ адміна
+#define DURATION_LED_LIGHT  1000
+#define DURATION_LED_ADMIN  10000
 
 
 
-GTimer adminWasHere(MS);
+
 Storage storage(EE_START_ADDR);
+
+
+// для зберігання часу початку події
+long time_start_led_blue = -10000;
+unsigned long time_start_led_green = 0;
+unsigned long time_start_led_red = 0;
+unsigned long time_start_led_violet = 0;
+unsigned long time_start_admin_mode = 0;
+
 
 //зберігаємо флаг ( адмін притуляв свою карточку )
 bool prevAdmin = false;
 bool writeStatus = false;
- 
-void ledSetColor(int state)
+
+
+void ledControl(){
+     digitalWrite(RED_LED_PIN,LOW); 
+      digitalWrite(GREEN_LED_PIN,LOW);
+      digitalWrite(BLUE_LED_PIN,LOW);
+   unsigned long curTime = millis();
+
+  if(curTime < time_start_led_blue ){
+      digitalWrite(BLUE_LED_PIN,HIGH);
+  }
+  if(curTime < time_start_led_green ){
+      digitalWrite(GREEN_LED_PIN,HIGH);
+  }
+  if(curTime < time_start_led_red ){
+      digitalWrite(RED_LED_PIN,HIGH);
+  }
+  if(curTime < time_start_led_violet ){
+      digitalWrite(BLUE_LED_PIN,HIGH);
+      digitalWrite(RED_LED_PIN,HIGH);
+  }
+}
+
+/// 
+void doTimerEvents(){
+   if(millis() > time_start_admin_mode){
+    if(prevAdmin){
+        Serial.println("Час очікування карти вийшов!");   
+        writeStatus = false;
+        prevAdmin = false;
+    }
+    }
+  }
+
+/// встановлюємо час початку світіння світлодіода
+void ledSetColor(int state, int duration=0)
 {
+  if(duration==0)
+    duration = DURATION_LED_LIGHT;
     switch(state)
     {
     case  LED_STATE_OFF:
-      digitalWrite(RED_LED_PIN,LOW); 
-      digitalWrite(GREEN_LED_PIN,LOW);
-      digitalWrite(BLUE_LED_PIN,LOW);
+      time_start_led_blue=0;
+      time_start_led_green=0;
+      time_start_led_red=0;
+      time_start_led_violet=0;
       break;
     case  LED_STATE_GREEN:
-      digitalWrite(RED_LED_PIN,LOW); 
-      digitalWrite(GREEN_LED_PIN,HIGH);
-      digitalWrite(BLUE_LED_PIN,LOW);
+      time_start_led_green = millis()+ duration;
       break;
     case  LED_STATE_RED:
-      digitalWrite(GREEN_LED_PIN,LOW);
-      digitalWrite(RED_LED_PIN,HIGH);
-      digitalWrite(BLUE_LED_PIN,LOW);
+      time_start_led_red = millis()+ duration;
+
       break;
     case LED_STATE_BLUE:
-      digitalWrite(BLUE_LED_PIN,HIGH);
-      digitalWrite(RED_LED_PIN,LOW);
+      time_start_led_blue = millis()+ duration;
+
       break;
     case LED_STATE_VIOLET:
-      digitalWrite(BLUE_LED_PIN,HIGH);
-      digitalWrite(RED_LED_PIN,HIGH);
-      digitalWrite(GREEN_LED_PIN,LOW);
+      time_start_led_violet = millis()+ duration;
+
       break;
     }
 }
@@ -72,10 +116,10 @@ void setup() {
   
   ReadRFIDKeySetup();
   
-  adminWasHere.setInterval(10000);
-  Serial.print("Saved keys count ");
-  Serial.println(storage.savedTagsCount());
-  delay(500);
+
+  Serial.print("В базі збережено ");
+  Serial.print(storage.savedTagsCount());
+  Serial.println(" карток");
     }
 
 
@@ -84,7 +128,7 @@ void uidPrint(byte *uidBite, int uidSize)
   for (byte i = 0; i < uidSize; i++) 
       {
      Serial.print(uidBite[i] < 0x10 ? " 0" : " ");
-     Serial.print(uidBite[i], HEX);
+     Serial.println(uidBite[i], HEX);
       }
    }
 
@@ -92,6 +136,22 @@ bool IsAdmin(byte *uidBite, int uidSize)
     {
  return true; 
     }
+
+    
+void SetAdminMode(){
+  prevAdmin = true;
+  ledSetColor(LED_STATE_BLUE, DURATION_LED_ADMIN);
+  Serial.println("Михайло!");
+  time_start_admin_mode = millis() + DURATION_LED_ADMIN;
+  }
+
+void AddNewCard(byte *uidBite, int uidSize){
+  storage.saveTag(uidBite,uidSize);
+  Serial.println("картка збережена!");
+  writeStatus=false;
+  prevAdmin = false;
+  ledSetColor(LED_STATE_VIOLET);
+  }  
 void openDoor()
        {            // тут вставити код відкривання дверей
    
@@ -103,9 +163,11 @@ void openDoor()
 
 void loop() 
 {
+  ledControl();
+  doTimerEvents();
   
   RFIDKey *key = ReadRFIDKey();  //uidPrint(mfrc522.uid.uidByte,mfrc522.uid.size)
-  
+
   if(key!=NULL)       //ключ піднесли
        {
                      //перевіряємо чи є в базі
@@ -114,17 +176,15 @@ void loop()
    
       if(keyAddress!=-1)  
       {
-        Serial.println("keyAddress");
+        
         //є адреса цього ключа, можна давати доступ 
         //ключ є в базі
         ledSetColor(LED_STATE_GREEN);
-        delay(2000);
+
         openDoor();
         
         if(!prevAdmin && IsAdmin(key->ByteValue,key->ByteSize)){
-            prevAdmin = true;
-            ledSetColor(LED_STATE_BLUE);
-            delay(1000);
+            SetAdminMode();
         }
                 
       }else{ 
@@ -132,61 +192,35 @@ void loop()
         if(prevAdmin){
             // якщо в режимі адмін
             // зберігаємо ключ
-            storage.saveTag(key->ByteValue,key->ByteSize);
-            Serial.print("картка збережена!");
-            writeStatus=false;
-            prevAdmin = false;
-            ledSetColor(LED_STATE_VIOLET); 
-            delay(1500);
+            AddNewCard(key->ByteValue,key->ByteSize);
+             
         }else{
             //ключа нема в базі
             ledSetColor(LED_STATE_RED);  
         }
         
-        
-
-        
       }
-      /*
-      uidPrint(key->ByteValue,key->ByteSize);
-      Serial.println(" keyAddress");
-      delay(500);
-      /**/
-      //   ключ піднесли для зчитування
 
+      //   ключ піднесли для зчитування 
+      // зберігаємо якщо нема жодного в базі
       if(storage.savedTagsCount()==0){
         storage.saveTag(key->ByteValue,key->ByteSize);
         }
    } 
    else 
    {
-      // ключа нема в базі
+      // ключа нема біля зчитувача
        if(prevAdmin) {
           if(!writeStatus)
           {
               writeStatus = true;
-              adminWasHere.reset();
-              Serial.print("чекаю на нову картку ");
-              Serial.println(adminWasHere.isEnabled());
-           }
+              Serial.print("Чекаю на нову картку ");
+              Serial.print(DURATION_LED_ADMIN/1000);
+              Serial.println(" секунд");
+          }
       }else{
         ledSetColor(LED_STATE_OFF);  
-
-        
       }
-    
-      
    }
 
-
-  if ( adminWasHere.isReady())
-  {
-    Serial.println("timer tick");
-    if(prevAdmin){
-        Serial.println("не встиг");   
-        //adminWasHere.stop();
-        writeStatus = false;
-        prevAdmin = false;
-    }
-  }
 }
