@@ -42,6 +42,8 @@ unsigned long time_start_admin_mode = 0;
 bool prevAdmin = false;
 bool writeStatus = false;
 
+bool doorOpenStatus = false;
+unsigned long door_open_time;
 
 void ledControl(){
      digitalWrite(RED_LED_PIN,LOW); 
@@ -62,16 +64,27 @@ void ledControl(){
       digitalWrite(BLUE_LED_PIN,HIGH);
       digitalWrite(RED_LED_PIN,HIGH);
   }
+  
 }
 
 /// 
 void doTimerEvents(){
-   if(millis() > time_start_admin_mode){
+   // виключаємо адміністратора
+   if(millis() >( time_start_admin_mode + DURATION_LED_ADMIN)){
     if(prevAdmin){
         Serial.println("Час очікування карти вийшов!");   
         writeStatus = false;
         prevAdmin = false;
+      }
     }
+
+    if(millis() >( door_open_time + DURATION_LED_ADMIN)){
+          // зупиняємо подачу напругу на реле замка
+        if(doorOpenStatus==true){    
+          doorOpenStatus = false;
+          digitalWrite(DOOR_PIN, LOW);    
+          Serial.println("Закриваємо двері"); 
+        }
     }
   }
 
@@ -142,7 +155,7 @@ void SetAdminMode(){
   prevAdmin = true;
   ledSetColor(LED_STATE_BLUE, DURATION_LED_ADMIN);
   Serial.println("Михайло!");
-  time_start_admin_mode = millis() + DURATION_LED_ADMIN;
+  time_start_admin_mode = millis();
   }
 
 void AddNewCard(byte *uidBite, int uidSize){
@@ -152,14 +165,15 @@ void AddNewCard(byte *uidBite, int uidSize){
   prevAdmin = false;
   ledSetColor(LED_STATE_VIOLET);
   }  
-void openDoor()
-       {            // тут вставити код відкривання дверей
-   
-   //digitalWrite(DOOR_PIN, HIGH);
-   digitalWrite(BUZZER_PIN, HIGH);
-  Serial.println("відкриваємо двері");
-      
-       } 
+void openDoor(){            // тут вставити код відкривання дверей
+
+  if(doorOpenStatus==false){    
+    doorOpenStatus = true;
+    door_open_time = millis();     // запоминаємо час відкриття замка
+    digitalWrite(DOOR_PIN, HIGH);    // подаємо напругу на реле замка
+    Serial.println("відкриваємо двері"); 
+    }
+  } 
 
 void loop() 
 {
